@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import requests
 import os
@@ -29,6 +29,10 @@ def fetch_from_uniconta(company_id, auth, entity):
             continue
     return None, f"Kunne ikke hente {entity}"
 
+@app.route("/")
+def index():
+    return send_from_directory(".", "dashboard.html")
+
 @app.route("/api/combined", methods=["GET"])
 def get_combined():
     company_id = request.args.get("company")
@@ -39,7 +43,6 @@ def get_combined():
     inventory, err2 = fetch_from_uniconta(company_id, auth, "InvItemClient")
     if err1:
         return jsonify({"error": err1}), 401 if "adgangskode" in err1 else 502
-    # Byg lager-opslag: varenummer -> available
     stock = {}
     if inventory:
         for item in inventory:
@@ -49,6 +52,37 @@ def get_combined():
                 stock[str(key)] = val
     return jsonify({"orders": orders or [], "stock": stock})
 
+@app.route("/api/production", methods=["GET"])
+def get_production():
+    company_id = request.args.get("company")
+    auth = request.headers.get("Authorization")
+    if not company_id or not auth:
+        return jsonify({"error": "Mangler company ID eller Authorization"}), 400
+
+    # Produktionsordrer
+    prod_orders, err1 = fetch_from_uniconta(company_id, auth, "ProdOrderClient")
+    # Styklister (BOM linjer)
+    bom_lines, err2 = fetch_from_uniconta(company_id, auth, "ProdBOMClient")
+    # Lagerstatus
+    inventory, err3 = fetch_from_uniconta(company_id, auth, "InvItemClient")
+
+    if err1:
+        return jsonify({"error": err1}), 502
+
+    stock = {}
+    if inventory:
+        for item in inventory:
+            key = item.get("Item") or item.get("ItemNumber") or item.get("_Item")
+            val = item.get("Available") or item.get("_Available") or 0
+            if key:
+                stock[str(key)] = val
+
+    return jsonify({
+        "prod_orders": prod_orders or [],
+        "bom_lines": bom_lines or [],
+        "stock": stock
+    })
+
 @app.route("/api/orders", methods=["GET"])
 def get_orders():
     company_id = request.args.get("company")
@@ -56,17 +90,6 @@ def get_orders():
     if not company_id or not auth:
         return jsonify({"error": "Mangler company ID eller Authorization"}), 400
     data, err = fetch_from_uniconta(company_id, auth, "DebtorOrderLineClient")
-    if err:
-        return jsonify({"error": err}), 401 if "adgangskode" in err else 502
-    return jsonify(data)
-
-@app.route("/api/inventory", methods=["GET"])
-def get_inventory():
-    company_id = request.args.get("company")
-    auth = request.headers.get("Authorization")
-    if not company_id or not auth:
-        return jsonify({"error": "Mangler company ID eller Authorization"}), 400
-    data, err = fetch_from_uniconta(company_id, auth, "InvItemClient")
     if err:
         return jsonify({"error": err}), 401 if "adgangskode" in err else 502
     return jsonify(data)
