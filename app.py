@@ -3,6 +3,9 @@ from flask_cors import CORS
 import requests
 import json
 import os
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 app = Flask(__name__)
 CORS(app)
@@ -90,6 +93,39 @@ def get_production():
     if err1 and err2:
         return jsonify({"error": err1}), 401 if "adgangskode" in err1 else 502
     return jsonify({"orders": orders or [], "lines": lines or []})
+
+@app.route("/api/send-report", methods=["POST"])
+def send_report():
+    auth = request.headers.get("Authorization")
+    if not auth:
+        return jsonify({"error": "Mangler Authorization"}), 400
+    body = request.get_json()
+    if not body:
+        return jsonify({"error": "Mangler rapport-data"}), 400
+
+    smtp_user = os.environ.get("SMTP_USER")
+    smtp_pass = os.environ.get("SMTP_PASS")
+    if not smtp_user or not smtp_pass:
+        return jsonify({"error": "SMTP ikke konfigureret på serveren"}), 500
+
+    subject = body.get("subject", "Produktionsordre færdigmeldt")
+    html_body = body.get("html", "")
+    to_email = "info@hennodahl.com"
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = "produktion@hennodahl.com"
+    msg["To"] = to_email
+    msg.attach(MIMEText(html_body, "html"))
+
+    try:
+        with smtplib.SMTP("smtp.office365.com", 587) as server:
+            server.starttls()
+            server.login(smtp_user, smtp_pass)
+            server.sendmail(smtp_user, to_email, msg.as_string())
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": f"Kunne ikke sende mail: {str(e)}"}), 500
 
 @app.route("/api/debug", methods=["GET"])
 def debug():
