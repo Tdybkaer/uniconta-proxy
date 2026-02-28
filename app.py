@@ -119,8 +119,7 @@ def send_report():
     msg.attach(MIMEText(html_body, "html"))
 
     try:
-        with smtplib.SMTP("smtp.office365.com", 587) as server:
-            server.starttls()
+        with smtplib.SMTP_SSL("smtp.office365.com", 465, timeout=15) as server:
             server.login(smtp_user, smtp_pass)
             server.sendmail(smtp_user, to_email, msg.as_string())
         return jsonify({"ok": True})
