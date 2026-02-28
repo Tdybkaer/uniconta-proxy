@@ -194,12 +194,14 @@
     .tab { padding: 12px 18px; font-size: 12px; }
 
     .stats-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; }
-    .stat-card { padding: 14px 16px; }
-    .stat-value { font-size: 26px; }
+    .stat-card { padding: 10px 14px; }
+    .stat-value { font-size: 22px; }
 
     .controls input[type="text"] { width: 160px; }
 
     table { min-width: 800px; }
+    td { padding: 9px 12px; font-size: 12px; }
+    thead th { padding: 8px 12px; font-size: 9px; }
 
     .table-card { flex: none; max-height: 70vh; -webkit-overflow-scrolling: touch; }
 
@@ -231,11 +233,11 @@
     .tab { padding: 12px 14px; font-size: 12px; flex: 1; text-align: center; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
 
     /* Stats */
-    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
-    .stat-card { padding: 12px 14px; border-radius: 14px; min-height: 44px; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 8px; }
+    .stat-card { padding: 8px 10px; border-radius: 12px; min-height: 40px; }
     .stat-card:hover { transform: none; filter: none; }
-    .stat-value { font-size: 22px; }
-    .stat-label { font-size: 8px; letter-spacing: 0.5px; }
+    .stat-value { font-size: 18px; }
+    .stat-label { font-size: 7px; letter-spacing: 0.4px; margin-bottom: 2px; }
 
     /* Controls */
     .controls { padding: 10px 12px; flex-direction: column; align-items: stretch; gap: 8px; border-radius: 10px; margin-bottom: 10px; }
@@ -244,13 +246,17 @@
     .ctrl-btn { padding: 12px 14px; min-height: 44px; font-size: 12px; }
 
     /* Table */
-    .table-card { border-radius: 10px 10px 0 0; max-height: 65vh; }
-    .table-header { padding: 12px 14px; flex-direction: column; gap: 4px; align-items: flex-start; }
+    .table-card { border-radius: 10px 10px 0 0; max-height: none; }
+    .table-header { padding: 10px 12px; flex-direction: column; gap: 4px; align-items: flex-start; }
     .table-header h2 { font-size: 10px; }
-    table { min-width: 750px; }
-    thead th { padding: 8px 10px; font-size: 9px; }
-    td { padding: 10px 10px; font-size: 12px; }
+    table { min-width: 700px; }
+    thead th { padding: 6px 6px; font-size: 8px; }
+    td { padding: 6px 6px; font-size: 10px; }
     tbody tr:hover { transform: none; }
+    .order-num { font-size: 11px; }
+    .item-badge { font-size: 10px; padding: 2px 6px; }
+    .days-tag { font-size: 8px; padding: 1px 5px; }
+    .stock-ok, .stock-partial, .stock-none { font-size: 10px; padding: 2px 6px; }
 
     /* BOM rows */
     .bom-row > td > div { padding: 8px 10px 8px 16px !important; }
@@ -288,9 +294,17 @@
     .stats-grid { grid-template-columns: 1fr; }
     .topbar-logo img { height: 22px; }
     .topbar-title { display: none; }
-    .stat-value { font-size: 20px; }
+    .stat-value { font-size: 16px; }
     .tab { padding: 10px 8px; font-size: 11px; }
   }
+
+  /* ── PAGINERING ── */
+  .pagination { display: none; align-items: center; justify-content: center; gap: 12px; padding: 12px; background: linear-gradient(180deg, #f8f9fb 0%, #ffffff 100%); border-top: 1px solid var(--border); }
+  .pagination button { background: linear-gradient(180deg, #1a3060 0%, #0d1b3e 100%); color: #fff; border: none; padding: 10px 18px; border-radius: 6px; font-size: 13px; font-weight: 700; cursor: pointer; min-height: 44px; font-family: inherit; box-shadow: 0 2px 6px rgba(13,27,62,0.2); transition: all 0.2s; }
+  .pagination button:hover { transform: translateY(-1px); box-shadow: 0 4px 10px rgba(13,27,62,0.3); }
+  .pagination button:disabled { opacity: 0.3; cursor: not-allowed; transform: none; box-shadow: none; }
+  .pagination span { font-size: 12px; color: var(--muted); font-weight: 600; }
+  @media (max-width: 1199px) { .pagination { display: flex; } }
 </style>
 
 </head>
@@ -379,9 +393,9 @@
       </div>
       <div class="controls">
         <label data-da="Søg" data-pl="Szukaj">Søg</label>
-        <input type="text" id="search-input" placeholder="Vare, ordrenr..." oninput="renderOrders()" />
+        <input type="text" id="search-input" placeholder="Vare, ordrenr..." oninput="_orderPage=0;renderOrders()" />
         <label data-da="Vis" data-pl="Pokaż">Vis</label>
-        <select id="filter-select" onchange="renderOrders()">
+        <select id="filter-select" onchange="_orderPage=0;renderOrders()">
           <option value="all" data-da="Alle" data-pl="Wszystkie">Alle</option>
           <option value="overdue" data-da="Overskredet" data-pl="Przeterminowane">Overskredet</option>
           <option value="soon" data-da="Inden 7 dage" data-pl="W ciągu 7 dni">Inden 7 dage</option>
@@ -408,9 +422,9 @@
       </div>
       <div class="controls">
         <label data-da="Søg" data-pl="Szukaj">Søg</label>
-        <input type="text" id="prod-search" placeholder="Prod.nr, varenr, navn..." oninput="renderProduction()" />
+        <input type="text" id="prod-search" placeholder="Prod.nr, varenr, navn..." oninput="_prodPage=0;renderProduction()" />
         <label data-da="Vis" data-pl="Pokaż">Vis</label>
-        <select id="prod-filter" onchange="renderProduction()">
+        <select id="prod-filter" onchange="_prodPage=0;renderProduction()">
           <option value="all" data-da="Alle" data-pl="Wszystkie">Alle</option>
           <option value="active" data-da="Aktive" data-pl="Aktywne">Aktive</option>
           <option value="done" data-da="Færdige" data-pl="Zakończone">Færdige</option>
@@ -438,6 +452,9 @@
   let currentLang = 'da';
   let soonDays = 7;
   let sortState = { col: null, dir: 'asc' };
+  let _orderPage = 0;
+  let _prodPage = 0;
+  function getPageSize() { return window.innerWidth <= 767 ? 20 : (window.innerWidth <= 1199 ? 30 : 0); }
 
   // ── SPROG ──
   const T = {
@@ -732,6 +749,7 @@
     });
     const map = {thisweek:'sc-thisweek', all:'sc-total', ok:'sc-ok', soon:'sc-soon', overdue:'sc-overdue', unconfirmed:'sc-unconfirmed'};
     if (map[val]) document.getElementById(map[val])?.classList.add('active-filter');
+    _orderPage = 0;
     renderOrders();
   }
   function colSort(col) {
@@ -842,6 +860,16 @@
       }
     }
 
+    // Pagination
+    const _totalOrderLines = lines.length;
+    const _opSize = getPageSize();
+    let _opMaxPage = 0;
+    if (_opSize > 0 && _totalOrderLines > _opSize) {
+      _opMaxPage = Math.ceil(_totalOrderLines / _opSize) - 1;
+      _orderPage = Math.min(_orderPage, _opMaxPage);
+      lines = lines.slice(_orderPage * _opSize, (_orderPage + 1) * _opSize);
+    }
+
     // Build order created lookup for overdue confirmation marking
     const _ocMap = {};
     const _fourDays = new Date(); _fourDays.setHours(0,0,0,0); _fourDays.setDate(_fourDays.getDate() - 4);
@@ -898,6 +926,13 @@
       </tr>`;
     }
     html += '</tbody></table>';
+    if (_opSize > 0 && _totalOrderLines > _opSize) {
+      html += `<div class="pagination">
+        <button onclick="_orderPage--;renderOrders()" ${_orderPage===0?'disabled':''}>◀ Forrige</button>
+        <span>Side ${_orderPage+1} / ${_opMaxPage+1} (${_totalOrderLines} linjer)</span>
+        <button onclick="_orderPage++;renderOrders()" ${_orderPage>=_opMaxPage?'disabled':''}>Næste ▶</button>
+      </div>`;
+    }
     document.getElementById('orders-container').innerHTML = html;
   }
 
@@ -933,6 +968,16 @@
     if (orders.length === 0) {
       document.getElementById('prod-container').innerHTML = `<div class="empty">${t.ingenProd}</div>`;
       return;
+    }
+
+    // Pagination
+    const _totalProdOrders = orders.length;
+    const _ppSize = getPageSize();
+    let _ppMaxPage = 0;
+    if (_ppSize > 0 && _totalProdOrders > _ppSize) {
+      _ppMaxPage = Math.ceil(_totalProdOrders / _ppSize) - 1;
+      _prodPage = Math.min(_prodPage, _ppMaxPage);
+      orders = orders.slice(_prodPage * _ppSize, (_prodPage + 1) * _ppSize);
     }
 
     let html = `<table><thead><tr>
@@ -1047,6 +1092,13 @@
       }
     }
     html += '</tbody></table>';
+    if (_ppSize > 0 && _totalProdOrders > _ppSize) {
+      html += `<div class="pagination">
+        <button onclick="_prodPage--;renderProduction()" ${_prodPage===0?'disabled':''}>◀ Forrige</button>
+        <span>Side ${_prodPage+1} / ${_ppMaxPage+1} (${_totalProdOrders} ordrer)</span>
+        <button onclick="_prodPage++;renderProduction()" ${_prodPage>=_ppMaxPage?'disabled':''}>Næste ▶</button>
+      </div>`;
+    }
     document.getElementById('prod-container').innerHTML = html;
   }
 
