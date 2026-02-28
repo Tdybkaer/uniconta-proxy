@@ -79,6 +79,18 @@ def get_orders():
         return jsonify({"error": err}), 401 if "adgangskode" in err else 502
     return jsonify(data)
 
+@app.route("/api/production", methods=["GET"])
+def get_production():
+    company_id = request.args.get("company")
+    auth = request.headers.get("Authorization")
+    if not company_id or not auth:
+        return jsonify({"error": "Mangler company ID eller Authorization"}), 400
+    orders, err1 = fetch_from_uniconta(company_id, auth, "ProductionOrderClient")
+    lines, err2  = fetch_from_uniconta(company_id, auth, "ProductionOrderLineClient")
+    if err1 and err2:
+        return jsonify({"error": err1}), 401 if "adgangskode" in err1 else 502
+    return jsonify({"orders": orders or [], "lines": lines or []})
+
 @app.route("/api/debug", methods=["GET"])
 def debug():
     company_id = request.args.get("company")
