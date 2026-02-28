@@ -42,6 +42,7 @@ def get_combined():
         return jsonify({"error": "Mangler company ID eller Authorization"}), 400
     orders, err1 = fetch_from_uniconta(company_id, auth, "DebtorOrderLineClient")
     inventory, _ = fetch_from_uniconta(company_id, auth, "InvItemClient")
+    order_headers, _ = fetch_from_uniconta(company_id, auth, "DebtorOrderClient")
     if err1:
         return jsonify({"error": err1}), 401 if "adgangskode" in err1 else 502
     stock = {}
@@ -55,7 +56,7 @@ def get_combined():
                     "reserved":  item.get("QtyReserved") or 0,
                     "ordered":   item.get("QtyOrdered") or 0,
                 }
-    return jsonify({"orders": orders or [], "stock": stock})
+    return jsonify({"orders": orders or [], "stock": stock, "orderHeaders": order_headers or []})
 
 @app.route("/api/inventory", methods=["GET"])
 def get_inventory():
