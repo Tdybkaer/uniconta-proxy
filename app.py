@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import requests
+import json
 import os
 
 app = Flask(__name__)
@@ -32,6 +33,68 @@ def fetch_from_uniconta(company_id, auth, entity):
 @app.route("/")
 def index():
     return send_from_directory(".", "dashboard.html")
+
+@app.route("/api/search_order", methods=["GET"])
+def search_order():
+    company_id = request.args.get("company")
+    auth = request.headers.get("Authorization")
+    if not company_id or not auth:
+        return jsonify({"error": "Mangler company ID eller Authorization"}), 400
+
+    headers = {"Authorization": auth, "Accept": "application/json"}
+
+    # Prøv alle mulige entiteter med filter på ordrenummer eller varenummer
+    candidates = [
+        "InvTransClient", "InvBOMClient", "CreditorOrderClient",
+        "CreditorOrderLineClient", "DebtorOrderClient", "DebtorOrderLineClient",
+        "InvItemClient", "InvJournalClient",
+    ]
+
+    # OData filter URLs at prøve
+    search_urls = []
+    for entity in candidates:
+        search_urls += [
+            (entity, f"https://odata.uniconta.com/odata/{company_id}/{entity}?$filter=OrderNumber eq '3027'"),
+            (entity, f"https://odata.uniconta.com/odata/{company_id}/{entity}?$filter=OrderNumber eq 3027"),
+            (entity, f"https://odata.uniconta.com/odata/{company_id}/{entity}?Name=OrderNumber&Value=3027"),
+            (entity, f"https://odata.uniconta.com/odata/{company_id}/{entity}?Name=Item&Value=PLUK_A.E.70020XX"),
+        ]
+
+    # Tilføj ukendte entiteter vi ikke har prøvet
+    extra_entities = [
+        "InvJobJournalClient", "InvJobJournalLineClient",
+        "InvProdOrderClient", "InvProdOrderLineClient",
+        "InvProductionClient", "InvProductionLineClient",
+        "InvManufactureClient", "InvWorkClient",
+        "InvWorkLineClient", "InvOrderWorkClient",
+    ]
+    for entity in extra_entities:
+        search_urls.append((entity, f"https://odata.uniconta.com/odata/{company_id}/{entity}"))
+
+    results = {"fundet": {}, "ikke_fundet": []}
+
+    for entity, url in search_urls:
+        try:
+            r = requests.get(url, headers=headers, timeout=10)
+            if r.status_code == 200:
+                data = r.json()
+                if isinstance(data, dict) and "value" in data:
+                    data = data["value"]
+                if isinstance(data, list) and len(data) > 0:
+                    text = json.dumps(data)
+                    if "3027" in text or "PLUK" in text or "70020" in text:
+                        results["fundet"][f"{entity} | {url}"] = data[0]
+                    elif entity in extra_entities:
+                        results["fundet"][f"{entity} (ny entitet virker!)"] = {
+                            "antal": len(data),
+                            "første_post": data[0]
+                        }
+            elif r.status_code not in (404, 400):
+                results["ikke_fundet"].append(f"{entity}: HTTP {r.status_code}")
+        except Exception as e:
+            pass
+
+    return jsonify(results)
 
 @app.route("/api/webapi_debug", methods=["GET"])
 def webapi_debug():
