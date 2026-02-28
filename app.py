@@ -9,11 +9,11 @@ CORS(app)
 UNICONTA_ODATA = "https://odata.uniconta.com/odata"
 UNICONTA_API   = "https://api.uniconta.com/api/Entities"
 
-def fetch_order_lines(company_id, auth):
+def fetch_from_uniconta(company_id, auth, entity):
     headers = {"Authorization": auth, "Accept": "application/json"}
     urls = [
-        f"{UNICONTA_ODATA}/{company_id}/DebtorOrderLineClient",
-        f"{UNICONTA_API}/DebtorOrderLineClient",
+        f"{UNICONTA_ODATA}/{company_id}/{entity}",
+        f"{UNICONTA_API}/{entity}",
     ]
     for url in urls:
         try:
@@ -25,9 +25,9 @@ def fetch_order_lines(company_id, auth):
                 return data, None
             elif r.status_code in (401, 403):
                 return None, "Forkert brugernavn eller adgangskode"
-        except requests.exceptions.RequestException as e:
+        except requests.exceptions.RequestException:
             continue
-    return None, "Kunne ikke forbinde til Uniconta"
+    return None, f"Kunne ikke hente {entity}"
 
 @app.route("/api/orders", methods=["GET"])
 def get_orders():
@@ -35,27 +35,37 @@ def get_orders():
     auth = request.headers.get("Authorization")
     if not company_id or not auth:
         return jsonify({"error": "Mangler company ID eller Authorization"}), 400
-    data, err = fetch_order_lines(company_id, auth)
+    data, err = fetch_from_uniconta(company_id, auth, "DebtorOrderLineClient")
+    if err:
+        return jsonify({"error": err}), 401 if "adgangskode" in err else 502
+    return jsonify(data)
+
+@app.route("/api/inventory", methods=["GET"])
+def get_inventory():
+    company_id = request.args.get("company")
+    auth = request.headers.get("Authorization")
+    if not company_id or not auth:
+        return jsonify({"error": "Mangler company ID eller Authorization"}), 400
+    data, err = fetch_from_uniconta(company_id, auth, "InvItemClient")
     if err:
         return jsonify({"error": err}), 401 if "adgangskode" in err else 502
     return jsonify(data)
 
 @app.route("/api/debug", methods=["GET"])
 def debug():
-    """Viser rå feltnavne og værdier fra første ordrelinje"""
     company_id = request.args.get("company")
     auth = request.headers.get("Authorization")
+    entity = request.args.get("entity", "DebtorOrderLineClient")
     if not company_id or not auth:
         return jsonify({"error": "Mangler company ID eller Authorization"}), 400
-    data, err = fetch_order_lines(company_id, auth)
+    data, err = fetch_from_uniconta(company_id, auth, entity)
     if err:
         return jsonify({"error": err}), 401 if "adgangskode" in err else 502
     if not data:
-        return jsonify({"info": "Ingen ordrelinjer fundet"})
-    # Returner kun første post så vi kan se feltnavne
+        return jsonify({"info": "Ingen data fundet"})
     return jsonify({
-        "antal_linjer": len(data),
-        "felter_i_første_linje": data[0]
+        "antal": len(data),
+        "første_post": data[0]
     })
 
 if __name__ == "__main__":
