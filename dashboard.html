@@ -117,6 +117,8 @@
   .delivery-overdue { color: var(--red); font-weight: 700; }
   .delivery-soon { color: var(--yellow); font-weight: 700; }
   .delivery-ok { color: var(--green); }
+  .row-overdue-confirm { background: rgba(232,88,72,0.12) !important; border-left: 4px solid var(--red) !important; }
+  .row-overdue-confirm td:first-child { padding-left: 6px; }
   .days-tag { font-size: 10px; padding: 2px 7px; border-radius: 4px; margin-left: 6px; font-weight: 700; }
   .days-overdue { background: linear-gradient(180deg, rgba(192,57,43,0.14) 0%, rgba(192,57,43,0.06) 100%); color: var(--red); box-shadow: 0 1px 2px rgba(192,57,43,0.1); }
   .days-soon { background: linear-gradient(180deg, rgba(212,130,10,0.14) 0%, rgba(212,130,10,0.06) 100%); color: var(--yellow); box-shadow: 0 1px 2px rgba(212,130,10,0.1); }
@@ -261,7 +263,7 @@
           </div>
         </div>
         <div class="stat-card red" id="sc-overdue" onclick="setStatFilter('overdue')"><div class="stat-label" data-da="Overskredne ordre" data-pl="Zamówienia przeterminowane">Overskredne ordre</div><div class="stat-value" id="stat-overdue">—</div></div>
-        <div class="stat-card teal" id="sc-unconfirmed" onclick="setStatFilter('unconfirmed')"><div class="stat-label" data-da="Overskredet afsendelse af bekræftelse" data-pl="Przekroczono termin potwierdzenia" style="font-size:7.5px">Overskredet afsendelse af bekræftelse</div><div class="stat-value" id="stat-unconfirmed">—</div></div>
+        <div class="stat-card teal" id="sc-unconfirmed" onclick="setStatFilter('unconfirmed')"><div class="stat-label" data-da="Ikke bekræftet" data-pl="Niepotwierdzone">Ikke bekræftet</div><div class="stat-value" id="stat-unconfirmed">—</div><div id="stat-unconfirmed-overdue" style="font-size:10px;color:rgba(255,255,255,0.9);margin-top:4px;display:none"><span style="color:#ff6b6b;font-weight:700">⚠</span> <span id="stat-overdue-count">0</span> overskredet bekræftelse</div></div>
       </div>
       <div class="controls">
         <label data-da="Søg" data-pl="Szukaj">Søg</label>
@@ -552,7 +554,7 @@
     const today = new Date(); today.setHours(0,0,0,0);
     const inN = new Date(today); inN.setDate(inN.getDate() + soonDays);
     const { monday, sunday } = getWeekBounds();
-    let ok = 0, soon = 0, overdue = 0, unconfirmed = 0;
+    let ok = 0, soon = 0, overdue = 0, unconfirmed = 0, unconfirmedOverdue = 0;
     const fourDaysAgo = new Date(today); fourDaysAgo.setDate(fourDaysAgo.getDate() - 4);
     // Map order numbers to their created dates for fast lookup
     const orderCreatedMap = {};
@@ -567,10 +569,10 @@
     for (const l of filtered) {
       const d = parseDate(getF(l, ['Date','DeliveryDate','RequestedDeliveryDate']));
       if (!d) {
-        // Check if order was created more than 4 days ago
+        unconfirmed++;
         const ordNum = String(getF(l, ['OrderNumber','Order']) || '');
         const created = orderCreatedMap[ordNum];
-        if (created && created < fourDaysAgo) unconfirmed++;
+        if (created && created < fourDaysAgo) unconfirmedOverdue++;
       }
       else if (d > inN) ok++;
       else if (d > today) soon++;
@@ -591,6 +593,13 @@
     document.getElementById('stat-soon').textContent         = soon;
     document.getElementById('stat-overdue').textContent      = overdue;
     document.getElementById('stat-unconfirmed').textContent  = unconfirmed;
+    const overdueEl = document.getElementById('stat-unconfirmed-overdue');
+    if (unconfirmedOverdue > 0) {
+      overdueEl.style.display = 'block';
+      document.getElementById('stat-overdue-count').textContent = unconfirmedOverdue;
+    } else {
+      overdueEl.style.display = 'none';
+    }
   }
 
   function setStatFilter(val) {
@@ -599,7 +608,7 @@
     ['unconfirmed','thisweek'].forEach(v => {
       if (![...sel.options].some(o => o.value === v)) {
         const opt = document.createElement('option');
-        opt.value = v; opt.textContent = v === 'unconfirmed' ? 'Overskredet bekræftelse' : 'Nye denne uge';
+        opt.value = v; opt.textContent = v === 'unconfirmed' ? 'Ikke bekræftet' : 'Nye denne uge';
         sel.appendChild(opt);
       }
     });
@@ -658,15 +667,7 @@
       }
       lines = lines.filter(l => weekOrders.has(String(getF(l, ['OrderNumber','Order']) || '')));
     } else if (filter === 'unconfirmed') {
-      const today4 = new Date(); today4.setHours(0,0,0,0); today4.setDate(today4.getDate() - 4);
-      const ocMap = {};
-      for (const oh of allOrderHeaders) { const n = String(oh.OrderNumber||''); if(n) ocMap[n] = parseDate(oh.Created||oh.CreatedTime); }
-      lines = lines.filter(l => {
-        if (parseDate(getF(l, ['Date','DeliveryDate','RequestedDeliveryDate']))) return false;
-        const ordNum = String(getF(l, ['OrderNumber','Order']) || '');
-        const created = ocMap[ordNum];
-        return created && created < today4;
-      });
+      lines = lines.filter(l => !parseDate(getF(l, ['Date','DeliveryDate','RequestedDeliveryDate'])));
     } else if (filter !== 'all') {
       lines = lines.filter(l => delStatus(getF(l, ['Date','DeliveryDate','RequestedDeliveryDate'])) === filter);
     }
@@ -729,10 +730,24 @@
       }
     }
 
+    // Build order created lookup for overdue confirmation marking
+    const _ocMap = {};
+    const _fourDays = new Date(); _fourDays.setHours(0,0,0,0); _fourDays.setDate(_fourDays.getDate() - 4);
+    if (filter === 'unconfirmed') {
+      for (const oh of allOrderHeaders) { const n = String(oh.OrderNumber||''); if(n) _ocMap[n] = parseDate(oh.Created||oh.CreatedTime); }
+    }
+
     for (const l of lines) {
       const delVal  = l[delF];
       const st      = delStatus(delVal);
       const delCls  = st==='overdue'?'delivery-overdue':st==='soon'?'delivery-soon':'delivery-ok';
+      // Check if this unconfirmed line has exceeded 4-day confirmation deadline
+      let isOverdueConfirm = false;
+      if (filter === 'unconfirmed' && !parseDate(delVal)) {
+        const _ordN = String(l[ordF]||'');
+        const _cre = _ocMap[_ordN];
+        if (_cre && _cre < _fourDays) isOverdueConfirm = true;
+      }
       const itemKey = String(l[itemF]||'');
       const info    = stockMap[itemKey]??null;
       const avail   = info?info.available:null;
@@ -758,7 +773,7 @@
         ? `<td style="padding:8px 10px"><span class="note-icon has-note" title="${existNote.text.substring(0,80).replace(/"/g,'&quot;')}" onclick="openNoteModal('${String(l[ordF]||'').replace(/'/g,'')}','${String(l[itemF]||'').replace(/'/g,'')}','${String(l[descF]||'').substring(0,40).replace(/'/g,'')}')"><span class="note-dot"></span> Note</span></td>`
         : `<td style="padding:8px 10px"><span class="note-icon" onclick="openNoteModal('${String(l[ordF]||'').replace(/'/g,'')}','${String(l[itemF]||'').replace(/'/g,'')}','${String(l[descF]||'').substring(0,40).replace(/'/g,'')}')">＋</span></td>`;
 
-      html += `<tr>
+      html += `<tr${isOverdueConfirm ? ' class="row-overdue-confirm"' : ''}>
         <td><span class="order-num">#${l[ordF]||'—'}</span></td>
         <td><span class="item-badge">${l[itemF]||'—'}</span></td>
         <td style="color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis">${l[descF]||'—'}</td>
