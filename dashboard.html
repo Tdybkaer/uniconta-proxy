@@ -178,7 +178,119 @@
   .note-ftr .btn-cancel { background: transparent; border: 1.5px solid var(--border); color: var(--muted); padding: 9px 14px; border-radius: 4px; font-size: 13px; cursor: pointer; font-family: inherit; margin-left: auto; }
   .note-ftr .btn-cancel:hover { background: var(--surface2); color: var(--text); }
 
-  @media (max-width: 900px) { .stats-grid { grid-template-columns: repeat(2, 1fr); } }
+  /* ── RESPONSIVE: TABLET (768px–1199px) ── */
+  @media (max-width: 1199px) {
+    body { height: auto; overflow: auto; }
+    #dashboard { height: auto; overflow: visible; }
+    .main { padding: 16px 20px 0; overflow: visible; }
+    .tab-content { overflow: visible; min-height: auto; }
+    .tab-content.active { overflow: visible; }
+
+    .topbar { padding: 0 16px; height: 56px; }
+    .topbar-logo { gap: 12px; }
+    .topbar-title { font-size: 11px; letter-spacing: 1px; }
+
+    .tabs { padding: 0 16px; }
+    .tab { padding: 12px 18px; font-size: 12px; }
+
+    .stats-grid { grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .stat-card { padding: 14px 16px; }
+    .stat-value { font-size: 26px; }
+
+    .controls input[type="text"] { width: 160px; }
+
+    table { min-width: 800px; }
+
+    .table-card { flex: none; max-height: 70vh; -webkit-overflow-scrolling: touch; }
+
+    .login-card { width: 400px; padding: 40px 36px; }
+
+    .debug-card { width: 600px; }
+    .note-card { width: 480px; }
+  }
+
+  /* ── RESPONSIVE: MOBIL (320px–767px) ── */
+  @media (max-width: 767px) {
+    body { min-height: 100vh; }
+    .main { padding: 12px 10px 0; flex: none; }
+    .tab-content.active { flex: none; }
+
+    /* Topbar */
+    .topbar { padding: 8px 10px; height: auto; min-height: 52px; flex-wrap: wrap; gap: 8px; }
+    .topbar-logo { gap: 10px; }
+    .topbar-logo img { height: 26px; }
+    .topbar-divider { display: none; }
+    .topbar-title { font-size: 10px; letter-spacing: 0.8px; }
+    .topbar-right { gap: 6px; flex-wrap: wrap; }
+    .user-badge { display: none; }
+    .lang-btn { padding: 8px 10px; font-size: 11px; min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; }
+    .topbar-btn { padding: 10px 12px; font-size: 12px; min-height: 44px; display: inline-flex; align-items: center; }
+
+    /* Tabs */
+    .tabs { padding: 0 10px; }
+    .tab { padding: 12px 14px; font-size: 12px; flex: 1; text-align: center; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
+
+    /* Stats */
+    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; }
+    .stat-card { padding: 12px 14px; border-radius: 14px; min-height: 44px; }
+    .stat-card:hover { transform: none; filter: none; }
+    .stat-value { font-size: 22px; }
+    .stat-label { font-size: 8px; letter-spacing: 0.5px; }
+
+    /* Controls */
+    .controls { padding: 10px 12px; flex-direction: column; align-items: stretch; gap: 8px; border-radius: 10px; margin-bottom: 10px; }
+    .controls input[type="text"] { width: 100%; padding: 12px 14px; font-size: 16px; min-height: 44px; }
+    .controls select { width: 100%; padding: 12px 10px; font-size: 16px; min-height: 44px; }
+    .ctrl-btn { padding: 12px 14px; min-height: 44px; font-size: 12px; }
+
+    /* Table */
+    .table-card { border-radius: 10px 10px 0 0; max-height: 65vh; }
+    .table-header { padding: 12px 14px; flex-direction: column; gap: 4px; align-items: flex-start; }
+    .table-header h2 { font-size: 10px; }
+    table { min-width: 750px; }
+    thead th { padding: 8px 10px; font-size: 9px; }
+    td { padding: 10px 10px; font-size: 12px; }
+    tbody tr:hover { transform: none; }
+
+    /* BOM rows */
+    .bom-row > td > div { padding: 8px 10px 8px 16px !important; }
+    .bom-row input[type="number"] { min-height: 36px; font-size: 14px !important; }
+    .bom-row button { min-height: 44px; padding: 10px 18px !important; font-size: 13px !important; }
+
+    /* Note icon */
+    .note-icon { padding: 6px 10px; font-size: 12px; min-height: 36px; }
+
+    /* Login */
+    #login-screen { padding: 16px; }
+    .login-card { width: 100%; max-width: 400px; padding: 32px 24px; border-radius: 12px; }
+    .login-logo { margin-bottom: 24px; padding-bottom: 20px; }
+    .login-logo img { height: 40px; }
+    .login-logo p { font-size: 10px; margin-top: 10px; }
+    .form-group input { font-size: 16px; padding: 14px 14px; min-height: 44px; }
+    .login-btn { padding: 16px; font-size: 15px; min-height: 48px; }
+
+    /* Modals */
+    #debug-modal, #note-modal { padding: 10px; align-items: flex-end; }
+    .debug-card { width: 100%; max-height: 90vh; border-radius: 12px 12px 0 0; }
+    .note-card { width: 100%; border-radius: 12px 12px 0 0; }
+    .debug-header, .note-hdr { padding: 14px 16px; }
+    .debug-body { padding: 12px 14px; }
+    .debug-body pre { font-size: 11px; padding: 12px; }
+    .debug-close { min-height: 44px; padding: 8px 16px; display: inline-flex; align-items: center; }
+    .note-body { padding: 16px; }
+    .note-ta { font-size: 16px; min-height: 100px; }
+    .note-ftr { padding: 12px 16px 16px; flex-wrap: wrap; gap: 8px; }
+    .note-ftr .btn-save, .note-ftr .btn-del, .note-ftr .btn-cancel { min-height: 44px; padding: 10px 16px; }
+  }
+
+  /* ── RESPONSIVE: SMAL MOBIL (≤374px) ── */
+  @media (max-width: 374px) {
+    .stats-grid { grid-template-columns: 1fr; }
+    .topbar-logo img { height: 22px; }
+    .topbar-title { display: none; }
+    .stat-value { font-size: 20px; }
+    .tab { padding: 10px 8px; font-size: 11px; }
+  }
 </style>
 
 </head>
