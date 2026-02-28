@@ -34,6 +34,44 @@ def fetch_from_uniconta(company_id, auth, entity):
 def index():
     return send_from_directory(".", "dashboard.html")
 
+@app.route("/api/swagger_endpoints", methods=["GET"])
+def swagger_endpoints():
+    auth = request.headers.get("Authorization")
+    if not auth:
+        return jsonify({"error": "Mangler Authorization"}), 400
+
+    headers = {"Authorization": auth, "Accept": "application/json"}
+
+    # Hent Swagger JSON fra Web API
+    urls = [
+        "https://api.uniconta.com/swagger/v1/swagger.json",
+        "https://api.uniconta.com/swagger/v2/swagger.json",
+        "https://api.uniconta.com/api-docs",
+        "https://api.uniconta.com/openapi.json",
+    ]
+
+    for url in urls:
+        try:
+            r = requests.get(url, headers=headers, timeout=15)
+            if r.status_code == 200:
+                data = r.json()
+                # Udtræk kun endpoint-navne så det ikke bliver for stort
+                paths = list(data.get("paths", {}).keys())
+                # Filtrer på prod/production/manufacturing
+                prod_paths = [p for p in paths if any(
+                    x in p.lower() for x in ['prod', 'manufactur', 'work', 'bom', 'assembly']
+                )]
+                return jsonify({
+                    "url": url,
+                    "alle_endpoints_antal": len(paths),
+                    "prod_relaterede": prod_paths,
+                    "alle_endpoints": paths[:100]  # Første 100
+                })
+        except Exception as e:
+            continue
+
+    return jsonify({"error": "Kunne ikke hente Swagger dokumentation", "forsøgte_urls": urls})
+
 @app.route("/api/search_order", methods=["GET"])
 def search_order():
     company_id = request.args.get("company")
