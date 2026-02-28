@@ -33,6 +33,36 @@ def fetch_from_uniconta(company_id, auth, entity):
 def index():
     return send_from_directory(".", "dashboard.html")
 
+@app.route("/api/webapi_debug", methods=["GET"])
+def webapi_debug():
+    company_id = request.args.get("company")
+    auth = request.headers.get("Authorization")
+    entity = request.args.get("entity", "")
+    if not company_id or not auth:
+        return jsonify({"error": "Mangler company ID eller Authorization"}), 400
+
+    headers = {"Authorization": auth, "Accept": "application/json"}
+
+    # Prøv Web API formater
+    urls = [
+        f"https://api.uniconta.com/api/Entities/{entity}",
+        f"https://api.uniconta.com/api/{entity}",
+        f"https://api.uniconta.com/odata/{company_id}/{entity}",
+    ]
+
+    results = {}
+    for url in urls:
+        try:
+            r = requests.get(url, headers=headers, timeout=10)
+            results[url] = {
+                "status": r.status_code,
+                "preview": r.text[:500]
+            }
+        except Exception as e:
+            results[url] = {"error": str(e)}
+
+    return jsonify(results)
+
 @app.route("/api/combined", methods=["GET"])
 def get_combined():
     company_id = request.args.get("company")
