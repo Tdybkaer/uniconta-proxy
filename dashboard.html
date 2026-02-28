@@ -261,7 +261,7 @@
           </div>
         </div>
         <div class="stat-card red" id="sc-overdue" onclick="setStatFilter('overdue')"><div class="stat-label" data-da="Overskredne ordre" data-pl="Zamówienia przeterminowane">Overskredne ordre</div><div class="stat-value" id="stat-overdue">—</div></div>
-        <div class="stat-card teal" id="sc-unconfirmed" onclick="setStatFilter('unconfirmed')"><div class="stat-label" data-da="Ikke bekræftet" data-pl="Niepotwierdzone">Ikke bekræftet</div><div class="stat-value" id="stat-unconfirmed">—</div></div>
+        <div class="stat-card teal" id="sc-unconfirmed" onclick="setStatFilter('unconfirmed')"><div class="stat-label" data-da="Overskredet afsendelse af bekræftelse" data-pl="Przekroczono termin potwierdzenia" style="font-size:7.5px">Overskredet afsendelse af bekræftelse</div><div class="stat-value" id="stat-unconfirmed">—</div></div>
       </div>
       <div class="controls">
         <label data-da="Søg" data-pl="Szukaj">Søg</label>
@@ -553,13 +553,25 @@
     const inN = new Date(today); inN.setDate(inN.getDate() + soonDays);
     const { monday, sunday } = getWeekBounds();
     let ok = 0, soon = 0, overdue = 0, unconfirmed = 0;
+    const fourDaysAgo = new Date(today); fourDaysAgo.setDate(fourDaysAgo.getDate() - 4);
+    // Map order numbers to their created dates for fast lookup
+    const orderCreatedMap = {};
+    for (const oh of allOrderHeaders) {
+      const ordNum = String(oh.OrderNumber || '');
+      if (ordNum) orderCreatedMap[ordNum] = parseDate(oh.Created || oh.CreatedTime);
+    }
     const filtered = allLines.filter(l => {
       const item = String(getF(l, ['Item','ItemNumber']) || '').trim();
       return item !== '' && item !== '-';
     });
     for (const l of filtered) {
       const d = parseDate(getF(l, ['Date','DeliveryDate','RequestedDeliveryDate']));
-      if (!d) { unconfirmed++; }
+      if (!d) {
+        // Check if order was created more than 4 days ago
+        const ordNum = String(getF(l, ['OrderNumber','Order']) || '');
+        const created = orderCreatedMap[ordNum];
+        if (created && created < fourDaysAgo) unconfirmed++;
+      }
       else if (d > inN) ok++;
       else if (d > today) soon++;
       else overdue++;
@@ -587,7 +599,7 @@
     ['unconfirmed','thisweek'].forEach(v => {
       if (![...sel.options].some(o => o.value === v)) {
         const opt = document.createElement('option');
-        opt.value = v; opt.textContent = v === 'unconfirmed' ? 'Ikke bekræftet' : 'Nye denne uge';
+        opt.value = v; opt.textContent = v === 'unconfirmed' ? 'Overskredet bekræftelse' : 'Nye denne uge';
         sel.appendChild(opt);
       }
     });
@@ -646,7 +658,15 @@
       }
       lines = lines.filter(l => weekOrders.has(String(getF(l, ['OrderNumber','Order']) || '')));
     } else if (filter === 'unconfirmed') {
-      lines = lines.filter(l => !parseDate(getF(l, ['Date','DeliveryDate','RequestedDeliveryDate'])));
+      const today4 = new Date(); today4.setHours(0,0,0,0); today4.setDate(today4.getDate() - 4);
+      const ocMap = {};
+      for (const oh of allOrderHeaders) { const n = String(oh.OrderNumber||''); if(n) ocMap[n] = parseDate(oh.Created||oh.CreatedTime); }
+      lines = lines.filter(l => {
+        if (parseDate(getF(l, ['Date','DeliveryDate','RequestedDeliveryDate']))) return false;
+        const ordNum = String(getF(l, ['OrderNumber','Order']) || '');
+        const created = ocMap[ordNum];
+        return created && created < today4;
+      });
     } else if (filter !== 'all') {
       lines = lines.filter(l => delStatus(getF(l, ['Date','DeliveryDate','RequestedDeliveryDate'])) === filter);
     }
