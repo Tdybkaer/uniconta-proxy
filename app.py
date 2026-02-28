@@ -3,9 +3,6 @@ from flask_cors import CORS
 import requests
 import json
 import os
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 
 app = Flask(__name__)
 CORS(app)
@@ -103,26 +100,29 @@ def send_report():
     if not body:
         return jsonify({"error": "Mangler rapport-data"}), 400
 
-    smtp_user = os.environ.get("SMTP_USER")
-    smtp_pass = os.environ.get("SMTP_PASS")
-    if not smtp_user or not smtp_pass:
-        return jsonify({"error": "SMTP ikke konfigureret på serveren"}), 500
+    resend_key = os.environ.get("RESEND_API_KEY")
+    if not resend_key:
+        return jsonify({"error": "RESEND_API_KEY ikke konfigureret på serveren"}), 500
 
     subject = body.get("subject", "Produktionsordre færdigmeldt")
     html_body = body.get("html", "")
+    from_email = os.environ.get("RESEND_FROM", "onboarding@resend.dev")
     to_email = "info@hennodahl.com"
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = "produktion@hennodahl.com"
-    msg["To"] = to_email
-    msg.attach(MIMEText(html_body, "html"))
-
     try:
-        with smtplib.SMTP_SSL("smtp.office365.com", 465, timeout=15) as server:
-            server.login(smtp_user, smtp_pass)
-            server.sendmail(smtp_user, to_email, msg.as_string())
-        return jsonify({"ok": True})
+        r = requests.post("https://api.resend.com/emails", json={
+            "from": from_email,
+            "to": [to_email],
+            "subject": subject,
+            "html": html_body,
+        }, headers={
+            "Authorization": f"Bearer {resend_key}",
+            "Content-Type": "application/json",
+        }, timeout=15)
+        if r.status_code in (200, 201):
+            return jsonify({"ok": True})
+        else:
+            return jsonify({"error": f"Resend fejl: {r.text}"}), r.status_code
     except Exception as e:
         return jsonify({"error": f"Kunne ikke sende mail: {str(e)}"}), 500
 
